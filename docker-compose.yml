@@ -1,0 +1,23 @@
+# Optional convenience for reviewers who have Docker installed.
+# For this submission, the app was verified against a local PostgreSQL 17 service.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: unispase-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: unispase
+    ports:
+      - "5432:5432"
+    volumes:
+      - unispase-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d unispase"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  unispase-db:

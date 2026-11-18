@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskType {
+  ASSIGNMENT
+  TASK
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum ExamType {
+  MIDTERM
+  FINAL
+  QUIZ
+  OTHER
+}
+
+model User {
+  id           String         @id @default(uuid()) @db.Uuid
+  email        String         @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  refreshTokens RefreshToken[]
+  courses      Course[]
+  tasks        Task[]
+  exams        Exam[]
+  studyPlans   StudyPlan[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Course {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  code        String
+  title       String
+  instructor  String?
+  color       String   @default("#8B5CF6")
+  credits     Int?
+  term        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  exams       Exam[]
+
+  @@unique([userId, code])
+  @@index([userId])
+}
+
+model Task {
+  id          String     @id @default(uuid()) @db.Uuid
+  userId      String     @db.Uuid
+  courseId    String?    @db.Uuid
+  title       String
+  description String?
+  type        TaskType   @default(ASSIGNMENT)
+  priority    Priority   @default(MEDIUM)
+  status      TaskStatus @default(TODO)
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course?    @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  studySessions StudySession[]
+
+  @@index([userId, dueAt])
+  @@index([userId, status])
+}
+
+model Exam {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  courseId  String?  @db.Uuid
+  title     String
+  examType  ExamType @default(MIDTERM)
+  startsAt  DateTime
+  endsAt    DateTime?
+  location  String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startsAt])
+}
+
+model StudyPlan {
+  id          String         @id @default(uuid()) @db.Uuid
+  userId      String         @db.Uuid
+  title       String
+  summary     String?
+  plan        Json
+  model       String
+  generatedAt DateTime       @default(now())
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions    StudySession[]
+
+  @@index([userId, generatedAt])
+}
+
+model StudySession {
+  id          String    @id @default(uuid()) @db.Uuid
+  studyPlanId String    @db.Uuid
+  taskId      String?   @db.Uuid
+  title       String
+  startsAt    DateTime
+  endsAt      DateTime
+  completed   Boolean   @default(false)
+  studyPlan   StudyPlan @relation(fields: [studyPlanId], references: [id], onDelete: Cascade)
+  task        Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([studyPlanId])
+}
